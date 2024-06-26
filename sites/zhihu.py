@@ -1,0 +1,54 @@
+from core.webs import WebHots
+import requests
+import json
+import time
+from pymysql.converters import escape_str
+
+class zhihu(WebHots):
+    def __init__(self):
+        WebHots.__init__(self)
+
+    def getCtx(self):
+        header = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36",
+        }
+        url = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50&desktop=true"
+        res = requests.get(url, headers=header)
+        if res.status_code != 200:
+            print(f'err: {res.status_code}')
+            self.obj.clear()
+            return
+        try:
+            self.obj = json.loads(res.text, strict=False)
+        except Exception as e:
+            print(f'parse error:', e.args[0])
+            self.obj.clear()
+
+    def parse(self):
+        datas = list()
+        for i in self.obj["data"]:
+            datas.append({
+                "date": time.strftime("%Y-%m-%d", time.localtime()),
+                "rank": i["id"].split('_')[0],
+                "title": escape_str(i['target']['title']),
+                "desc": escape_str(i['target']['excerpt']),
+                "link": f'https://www.zhihu.com/question/{i["target"]["id"]}',
+            })
+        return datas
+
+    def updateDB(self, res: list):
+        for i in res:
+            self.db.connect('hot')
+            txt = f'''
+            INSERT INTO 
+                zhihu (query_date,ranking,title,link,descript) 
+            VALUES 
+                ('{i['date']}','{i['rank']}',{i['title']},'{i['link']}',{i['desc']})
+            '''
+            # print(txt)
+            self.db.exec(txt)
+
+
+if __name__ == '__main__':
+    hot = zhihu()
+    hot.run()
