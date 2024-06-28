@@ -10,7 +10,8 @@ class DB:
         self.conn = None
 
     def __del__(self):
-        self.conn.close()
+        if self.conn is not None:
+            self.conn.close()
 
     def connect(self, db_name: str):
         self.conn = pymysql.connect(host=self.ip, port=self.port, user=self.user, password=self.password,
