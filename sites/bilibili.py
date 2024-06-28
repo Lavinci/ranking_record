@@ -4,7 +4,7 @@ import json
 import time
 from pymysql.converters import escape_str
 
-cookie = "SESSDATA=fb2db971%2C1734761719%2Cade68%2A62CjDnvqUiF0rhxSpxs5szlSPz1Qdx7szJ3ERSgKxPqU_MymMGgw6VgG-7Um0p3beE6Y4SVndTbHNqcjQ5Q0psNFVkS3kzeEp2VXBVLUVDZmR2TGZKN3Y2bE5QWUVPak1WOFZJOVZ3MnhoTGZ4dHNOWDdweWpqeVd0dEhWYzFRRUZyd3pIM1FXMkp3IIEC;"
+
 class bilibili(WebHots):
     def __init__(self):
         WebHots.__init__(self)
@@ -14,7 +14,6 @@ class bilibili(WebHots):
             "Origin": "https://www.bilibili.com",
             "Referer": "https://www.bilibili.com",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36",
-            "Cookie": cookie
         }
         url = "https://api.bilibili.com/x/web-interface/ranking/v2?type=all"
         res = requests.get(url, headers=header)
@@ -48,16 +47,26 @@ class bilibili(WebHots):
         return datas
 
     def updateDB(self, res: list):
+        name = "bilibili"
         for i in res:
             self.db.connect('hot')
             txt = f'''
-            INSERT INTO bilibili 
-                (query_date,ranking,title,link,descript)
-            VALUES
-                ('{i['date']}','{i['rank']}',{i['title']},'{i['link']}',{i['desc']})
+            INSERT INTO {name} (query_date,ranking,title,link,descript)
+            SELECT * FROM (
+                SELECT "{i['date']}" AS query_date,
+                "{i['rank']}" AS ranking,
+                {i['title']} AS title,
+                "{i['link']}" AS link,
+                {i['desc']} AS descript
+            ) as tmp
+            WHERE NOT EXISTS(
+                SELECT query_date, ranking from {name}
+                WHERE query_date="{i['date']}" AND ranking="{i['rank']}"
+            );
             '''
             # print(txt)
             self.db.exec(txt)
+
 
 if __name__ == '__main__':
     hot = bilibili()

@@ -43,13 +43,22 @@ class weibo(WebHots):
         return datas
 
     def updateDB(self, res: list):
+        name = "weibo"
         for i in res:
             self.db.connect('hot')
             txt = f'''
-            INSERT INTO
-                weibo (query_date,ranking,title,link,descript)
-            VALUES
-                ('{i['date']}','{i['rank']}',{i['title']},'{i['link']}',{i['desc']})
+            INSERT INTO {name} (query_date,ranking,title,link,descript)
+            SELECT * FROM (
+                SELECT "{i['date']}" AS query_date,
+                "{i['rank']}" AS ranking,
+                {i['title']} AS title,
+                "{i['link']}" AS link,
+                {i['desc']} AS descript
+            ) as tmp
+            WHERE NOT EXISTS(
+                SELECT query_date, ranking from {name}
+                WHERE query_date="{i['date']}" AND ranking="{i['rank']}"
+            );
             '''
             self.db.exec(txt)
 

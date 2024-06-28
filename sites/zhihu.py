@@ -4,6 +4,7 @@ import json
 import time
 from pymysql.converters import escape_str
 
+
 class zhihu(WebHots):
     def __init__(self):
         WebHots.__init__(self)
@@ -15,7 +16,9 @@ class zhihu(WebHots):
         url = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50&desktop=true"
         res = requests.get(url, headers=header)
         if res.status_code != 200:
-            print(f'err: {res.status_code}')
+            if (res.status_code == 403):
+                print("验证码")
+                print(res.text)
             self.obj.clear()
             return
         try:
@@ -37,13 +40,22 @@ class zhihu(WebHots):
         return datas
 
     def updateDB(self, res: list):
+        name = "zhihu"
         for i in res:
             self.db.connect('hot')
             txt = f'''
-            INSERT INTO 
-                zhihu (query_date,ranking,title,link,descript) 
-            VALUES 
-                ('{i['date']}','{i['rank']}',{i['title']},'{i['link']}',{i['desc']})
+            INSERT INTO {name} (query_date,ranking,title,link,descript)
+            SELECT * FROM (
+                SELECT "{i['date']}" AS query_date,
+                "{i['rank']}" AS ranking,
+                {i['title']} AS title,
+                "{i['link']}" AS link,
+                {i['desc']} AS descript
+            ) as tmp
+            WHERE NOT EXISTS(
+                SELECT query_date, ranking from {name}
+                WHERE query_date="{i['date']}" AND ranking="{i['rank']}"
+            );
             '''
             # print(txt)
             self.db.exec(txt)
