@@ -1,6 +1,6 @@
 from core.webs import WebHots
+from core.utils import parseJson
 import requests
-import json
 import time
 from pymysql.converters import escape_str
 
@@ -17,23 +17,24 @@ class zhihu(WebHots):
         res = requests.get(url, headers=header)
         if res.status_code != 200:
             if (res.status_code == 403):
-                print("验证码")
+                print("触发验证码")
                 print(res.text)
             self.obj.clear()
             return
-        try:
-            self.obj = json.loads(res.text, strict=False)
-        except Exception as e:
-            print(f'parse error:', e.args[0])
-            self.obj.clear()
+        self.obj = parseJson(res.text)
+        if len(self.obj) == 0:
+            return
 
     def parse(self):
         datas = list()
         for i in self.obj["data"]:
+            rank = int(i["id"].split('_')[0])+1
+            title = escape_str(i['target']['title'])
+            print(f'{rank}:\t{title}')
             datas.append({
                 "date": time.strftime("%Y-%m-%d", time.localtime()),
-                "rank": i["id"].split('_')[0],
-                "title": escape_str(i['target']['title']),
+                "rank": rank,
+                "title": title,
                 "desc": escape_str(i['target']['excerpt']),
                 "link": f'https://www.zhihu.com/question/{i["target"]["id"]}',
             })

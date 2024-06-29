@@ -16,14 +16,14 @@ class DB:
     def connect(self, db_name: str):
         self.conn = pymysql.connect(host=self.ip, port=self.port, user=self.user, password=self.password,
                                     charset=self.charset)
-        print(self.conn.get_server_info())
+        # print(self.conn.get_server_info())
         self.conn.select_db(db_name)
 
     def disconnect(self):
         self.conn.close()
 
     def exec(self, cmd: str):
-        print(f"exec cmd {cmd}")
+        # print(f"exec cmd {cmd.strip()}")
         cursor = self.conn.cursor()
         cursor.execute(cmd)
         self.conn.commit()

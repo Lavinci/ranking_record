@@ -1,8 +1,9 @@
 from core.webs import WebHots
+from core.utils import parseJson
 import requests
-import json
 import time
 from pymysql.converters import escape_str
+
 
 class weibo(WebHots):
     def __init__(self):
@@ -20,11 +21,8 @@ class weibo(WebHots):
             self.obj.clear()
             return
 
-        try:
-            self.obj = json.loads(res.text, strict=False)
-        except Exception as e:
-            print(f'parse error:', e.args[0])
-            self.obj.clear()
+        self.obj = parseJson(res.text)
+        if len(self.obj) == 0:
             return
 
     def parse(self):
@@ -33,6 +31,7 @@ class weibo(WebHots):
             # 跳过广告
             if 'ad_channel' in i:
                 continue
+            print(f'{i["realpos"]}:\t{i["word"]}')
             datas.append({
                 "date": time.strftime("%Y-%m-%d", time.localtime()),
                 "rank": i["realpos"],

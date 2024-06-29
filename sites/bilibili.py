@@ -1,6 +1,6 @@
 from core.webs import WebHots
+from core.utils import parseJson
 import requests
-import json
 import time
 from pymysql.converters import escape_str
 
@@ -8,42 +8,65 @@ from pymysql.converters import escape_str
 class bilibili(WebHots):
     def __init__(self):
         WebHots.__init__(self)
+        self._352 = False
 
     def getCtx(self):
         header = {
-            "Origin": "https://www.bilibili.com",
-            "Referer": "https://www.bilibili.com",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36",
+            "Referer": "https://www.bilibili.com/ranking/all",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
         }
-        url = "https://api.bilibili.com/x/web-interface/ranking/v2?type=all"
+        url = "https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all"
         res = requests.get(url, headers=header)
         if res.status_code != 200:
             print(f'errcode: {res.status_code}')
             print(res.text)
             self.obj.clear()
             return
-
-        try:
-            self.obj = json.loads(res.text, strict=False)
-        except Exception as e:
-            print(f'parse error:', e.args[0])
-            self.obj.clear()
+        # print(res.text)
+        self.obj = parseJson(res.text)
+        if len(self.obj) == 0:
             return
 
-        if self.obj["code"] != 0:
+        if self.obj["code"] == -352:
+            print("触发风控,使用备用api")
+            bak_url = "https://api.bilibili.com/x/web-interface/ranking?jsonp=jsonp?rid=0&type=1&callback=__jp0"
+            res = requests.get(bak_url, headers=header)
+            # print(res.text)
+            self.obj = parseJson(res.text)
+            if len(self.obj) == 0:
+                return
+            self._352 = True
+
+        elif self.obj["code"] != 0:
             print(self.obj)
             self.obj.clear()
 
     def parse(self):
         datas = list()
-        for x, i in enumerate(self.obj["data"]["list"]):
-            datas.append({
-                "date": time.strftime("%Y-%m-%d", time.localtime()),
-                "rank": x,
-                "title": escape_str(i['title']),
-                "desc": escape_str(i['desc']),
-                "link": i['short_link_v2'],
-            })
+        if not self._352:
+            for x, i in enumerate(self.obj["data"]["list"]):
+                rank = x + 1
+                title = i["title"]
+                print(f'{rank}:\t{title}')
+                datas.append({
+                    "date": time.strftime("%Y-%m-%d", time.localtime()),
+                    "rank": rank,
+                    "title": escape_str(title),
+                    "desc": escape_str(i['desc']),
+                    "link": i['short_link_v2'],
+                })
+        else:
+            for x, i in enumerate(self.obj["data"]["list"]):
+                rank = x + 1
+                title = i["title"]
+                print(f'{rank}:\t{title}')
+                datas.append({
+                    "date": time.strftime("%Y-%m-%d", time.localtime()),
+                    "rank": rank,
+                    "title": escape_str(title),
+                    "desc": escape_str(i['title']),
+                    "link": f"https://www.bilibili.com/video/{i['bvid']}",
+                })
         return datas
 
     def updateDB(self, res: list):
